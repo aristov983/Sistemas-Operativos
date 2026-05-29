@@ -3,22 +3,19 @@
 #include <fstream>
 #include <vector>
 #include <string>
-#include <cstrings>
-#include <csingla>
+#include <cstring>
+#include <csignal>
 #include <pthread.h>
 #include <unistd.h>
-#include <filesystem.h> 
+#include <filesystem> 
+#include <signal.h>
 
 using namespace std;
-
-struct Hilo {
-    int tid; //Thread id
-    string estado;
-}
+namespace fs = std::filesystem;
 
 //obtener nombre a partir de PID
 string obtenerNombreProceso(int pid){
-    string ruta = "/proc/" + to_string(pid) + "/comn";
+    string ruta = "/proc/" + to_string(pid) + "/comm";
 
     ifstream archivo(ruta); //En archivo leo todo lo que está en la ruta
 
@@ -36,7 +33,7 @@ int obtenerPidProceso(string nombre){
     
     DIR* d = opendir("/proc/"); //El * hace que DIR sea un puntero al espacio de memoria.
     struct dirent* entrada; //dirent es una estructura de <dirent.h> significa directory entry.
-    entrada = readdir(dir); //readdir(dir) devuelve el siguiente elemento del directorio cada vez que se ejecuta.
+    entrada = readdir(d); //readdir(dir) devuelve el siguiente elemento del directorio cada vez que se ejecuta.
     while (entrada!=NULL){
 
         if (entrada->d_type == DT_DIR){ //acá usa -> porque entrada es un puntero, y checkea que la entrada sea de tipo directorio (Todo esto es de <dirent.h>)
@@ -44,15 +41,16 @@ int obtenerPidProceso(string nombre){
             
             if (pid_actual>0){ //chequea que sea >0 porque hay otras carpetas que no son procesos y si atoi falla devuelve 0.
                 if (nombre == obtenerNombreProceso(pid_actual)){
-                    closedir(dir);
+                    closedir(d);
                     return pid_actual;
                 }
             }
         }
 
-        entrada = readdir(dir);
+        entrada = readdir(d);
     }
 
+    closedir(d);
     return -1;
     
 }
@@ -62,24 +60,25 @@ bool verificarPID(int pid){
     DIR* d = opendir("/proc/");
 
     struct dirent* entrada;
-    entrada = readdir(dir);
+    entrada = readdir(d);
 
     while (entrada!=NULL){
 
         if (entrada->d_type == DT_DIR){
 
             int subPID = atoi(entrada->d_name);
-            if (sub_PID>0){
+            if (subPID>0){
 
-                if (pid == sub_PID){
-                    closedir(dir);
+                if (pid == subPID){
+                    closedir(d);
                     return true;
                 }
             }
         }
-        entrada = readdir(dir);
+        entrada = readdir(d);
     }
 
+    closedir(d);
     return false;
 }
 
@@ -102,40 +101,20 @@ struct Hilo {
     string estado;
 };
 
-//listarhilos
-void listarHilos(int pid) {
-
-    string ruta = "/proc/" + to_string(pid) + "/task/";
-
-    if (!fs::exists(ruta)) {
-        cout << "El proceso no existe" << endl;
-        return;
-    }
-
-    cout << "\nHilos del proceso " << pid << ":" << endl;
-
-    for (const auto& entrada : fs::directory_iterator(ruta)) {
-
-        string tid = entrada.path().filename().string();
-
-        cout << "TID: " << tid << endl;
-    }
-}
-
 //obtener lista de hilos
 vector<Hilo> obtenerHilos(int pid) {
 
     vector<Hilo> hilos;
     string ruta = "/proc/" + to_string(pid) + "/task";
-    DIR* dir = opendir(ruta.c_str()); //c_str() convierte el string a char* porque opendir funciona con eso.
+    DIR* d = opendir(ruta.c_str()); //c_str() convierte el string a char* porque opendir funciona con eso.
 
-    if (dir == NULL) {
+    if (d == NULL) {
         return hilos;
     }
 
     struct dirent* entrada;
 
-    while ((entrada = readdir(dir)) != NULL) {
+    while ((entrada = readdir(d)) != NULL) {
 
         if (entrada->d_type == DT_DIR) {
             int tid = atoi(entrada->d_name);
@@ -148,19 +127,34 @@ vector<Hilo> obtenerHilos(int pid) {
         }
     }
 
-    closedir(dir);
+    closedir(d);
     return hilos;
+}
+
+//listarhilos
+void listarHilos(int pid) {
+
+    vector<Hilo> hilos = obtenerHilos(pid);
+
+    if (hilos.empty()){
+        cout << "No se encontraron hilos." << endl;
+        return;
+    }
+
+    for (const Hilo& h : hilos){
+        cout << "TID: " << h.tid << " | Estado: " << h.estado << endl;
+    }
+
 }
 
 //terminar hilo
 void terminarHilo(int tid) {
 
-    int resultado = pthread_kill((pthread_t)tid, SIGKILL);
+    int resultado = kill(tid, SIGKILL);
 
     if (resultado == 0) {
         cout << "El hilo " << tid << " ha sido terminado con éxito.\n";
-    }
-    else {
+    } else {
         cout << "Error al terminar el hilo.\n";
     }
 }
@@ -183,8 +177,27 @@ void imprimirMenu(){
 
 void imprimirSubMenuProceso(){
     cout << "\n---- Inspeccion de proceso e hilos ----" << endl;
-    cout << "\n1.Deseo finalizar un hilo ingresando su TID\n2.Deseo listar los hilos del proceso\nVolver." <<endl;
+    cout << "\n1.Deseo finalizar un hilo ingresando su TID\n2.Deseo listar los hilos del proceso y guardarlos en un txt.\n3.Volver." <<endl;
     cout << "Ingrese una opción: ";
+}
+
+void exportarTXT(vector<Hilo> hilos){
+
+    ofstream archivo("hilos.txt");
+
+    if (!archivo.is_open()){
+        cout << "No se pudo crear el archivo." << endl;
+        return;
+    }
+
+    for (const Hilo& h : hilos){
+
+        archivo << "TID: " << h.tid << " | Estado: " << h.estado << endl;
+    }
+
+    archivo.close();
+
+    cout << "Listado exportado correctamente a hilos.txt" << endl;
 }
 
 
@@ -200,58 +213,102 @@ int main()
 
         switch (opcion){
 
-            case 1:
+            case 1:{
                 int pid;
-                cout << "Ingrese PID: "
+                cout << "Ingrese PID: ";
                 cin >> pid;
                 if(verificarPID(pid)){
-                    while (true){
+                    bool volver = false;
+                    while (!volver){
                         imprimirSubMenuProceso();
                         cin >> subopcion;
                         switch (subopcion){
-                            case 1:
-                                vector<HILO> hilos = obtenerHilos(pid);
+                            case 1:{
+                                vector<Hilo> hilos = obtenerHilos(pid);
                                 int tid;
-                                cout << "Ingrese TID: "
+                                cout << "Ingrese TID: ";
                                 cin >> tid;
                                 if (existeHilo(pid, tid)){
                                     terminarHilo(tid);
                                     break;
                                 } else {
-                                    cout << "No existe el hilo."
+                                    cout << "No existe el hilo.";
                                     break;
                                 }
-                            case 2
+                            }
+                            case 2:{
+                                vector<Hilo> hilos = obtenerHilos(pid);
+                                exportarTXT(hilos);
                                 listarHilos(pid);
                                 break;
-                            case 3:
-                                return;
+                            }
+                            case 3:{
+                                volver=true;
+                                break;
+                            }
                         }
                     }
                 } else {
                     cout << "No existe proceso con ese PID" << endl;
                     break;
                 }
+                break;
+            }
 
-            case 2:
+            case 2:{
                 string nombre;
-                cout << "Ingrese nombre del proceso: "
+                cout << "Ingrese nombre del proceso: ";
                 cin >> nombre;
 
-                int pid = buscarPIDPorNombre(nombre);
+                int pid = obtenerPidProceso(nombre);
                 if (pid>0){
-                    //LOGICA HILOS
+                    bool volver = false;
+                    while (!volver){
+                        imprimirSubMenuProceso();
+                        cin >> subopcion;
+                        switch (subopcion){
+                            case 1:{
+                                vector<Hilo> hilos = obtenerHilos(pid);
+                                int tid;
+                                cout << "Ingrese TID: ";
+                                cin >> tid;
+                                if (existeHilo(pid, tid)){
+                                    terminarHilo(tid);
+                                    break;
+                                } else {
+                                    cout << "No existe el hilo.";
+                                    break;
+                                }
+                            }
+                            case 2:{
+                                vector<Hilo> hilos = obtenerHilos(pid);
+                                listarHilos(pid);
+                                exportarTXT(hilos);
+                                break;
+                            }
+                            case 3:{
+                                volver = true;
+                                break;
+                            }
+
+                            default:
+                                cout<<"Opcion invalida.";
+                        }
+                    }
                 } else {
-                    cout << "El proceso no existe."
+                    cout << "El proceso no existe.";
                 }
-        
-            case 3:
-                return;
+                break;
+            }
+
+            case 3:{
+                return 0;
+            }
+
+            default:{
+                cout<<"OPCION INVALIDA NO SABES LEER DIOS HACE 3 HORAS ESTOY CON ESTO." << endl;
+            }
         }
     }
+    return 0;
 }
-
-/*
-    Este programa funciona únicamente en linux y depende de htop, es necesario instalarlo (desde ubuntu: sudo apt install htop)
-    
-*/
