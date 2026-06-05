@@ -1,0 +1,7 @@
+[22:35] Auto ingresó al garaje
+[22:59] Auto ingresó al garaje
+[23:29] Moto ingresó al garaje
+[00:10] Bicicleta entró al garaje
+[01:00] Ambulancia entró al garaje
+[08:39] Ambulancia salió del garaje
+
