@@ -1,0 +1,40 @@
+La Cafetería de la UCU
+
+
+Contexto del problema:
+
+ 
+En la cantina hay una sola cafetera y varios estudiantes que en distintos momentos quieren servirse café. 
+
+Cada vez que un estudiante quiere café:
+
+Entra a la cocina.
+
+Usa la cafetera durante unos segundos.
+
+Sale de la cocina.
+
+Pero si dos estudiantes usan la cafetera al mismo tiempo, se derrama el café.
+
+Consigna:
+
+Simular esta situación con múltiples procesos/hilos y aplicar un mecanismo de sincronización para que solo un estudiante use la cafetera a la vez.
+
+
+Se pide: 
+
+Crear en C++ un programa donde:
+
+Hay 5 estudiantes(hilos o procesos).
+
+Cada uno intenta usar la cafetera 2 veces al azar.
+
+Se debe usar un método de sincronización para garantizar que solo un estudiante use la cafetera al mismo tiempo.
+
+El programa deberá:
+
+Mostrar en consola quién entra y quién sale de la cocina.
+
+Ver claramente que no hay superposición de acceso a la cafetera (quien queda en espera).
+
+Subir a este espacio un documento que incluya capturas del programa en funcionamiento + el código fuente creado.
