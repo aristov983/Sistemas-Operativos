@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sistemas Operativos: Procesos, Almacenamiento e I/O</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    :root{
+      --bg1:#fff7f3; --bg2:#eef8ff; --bg3:#f4f0ff; --ink:#344054;
+      --rose:#ffd8df; --mint:#d7f7e7; --sky:#d8eeff; --lav:#e6dcff; --sun:#fff0bd;
+      --accent:#8d7cf2; --accent2:#5eb4a8; --dark:#2f3a4a;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; color:var(--ink); font-family: 'Segoe UI', system-ui, sans-serif;
+      background: radial-gradient(circle at 10% 10%, #ffe4ec 0, transparent 32%),
+                  radial-gradient(circle at 85% 20%, #d8f4ff 0, transparent 30%),
+                  linear-gradient(135deg,var(--bg1),var(--bg2) 50%,var(--bg3));
+      min-height:100vh; overflow:hidden;
+    }
+    .deck{height:100vh; display:flex; flex-direction:column;}
+    .topbar{height:64px; display:flex; align-items:center; justify-content:space-between; padding:0 24px; background:rgba(255,255,255,.68); backdrop-filter: blur(12px); border-bottom:1px solid rgba(255,255,255,.7)}
+    .brand{font-weight:800; letter-spacing:.3px; color:var(--dark)}
+    .progress{height:10px; border-radius:99px; background:#ffffff99; width:260px; overflow:hidden}
+    .progress-bar{background:linear-gradient(90deg,var(--accent),var(--accent2));}
+    .slide{display:none; flex:1; padding:34px min(5vw,70px); overflow:auto;}
+    .slide.active{display:block;}
+    .slide-inner{max-width:1180px; margin:0 auto; min-height:calc(100vh - 160px); display:flex; flex-direction:column; justify-content:center;}
+    h1{font-size:clamp(2.4rem,5vw,5rem); line-height:1.02; font-weight:900; color:#2d3448;}
+    h2{font-size:clamp(1.9rem,3vw,3rem); font-weight:850; color:#30384d; margin-bottom:1rem;}
+    h3{font-weight:800; color:#3d465f;}
+    p, li{font-size:1.1rem; line-height:1.55}
+    .lead{font-size:1.35rem; color:#566071}
+    .soft-card{background:rgba(255,255,255,.76); border:1px solid rgba(255,255,255,.85); border-radius:28px; padding:24px; box-shadow:0 18px 50px rgba(71,72,116,.12);}
+    .pill{display:inline-flex; align-items:center; gap:.5rem; border-radius:999px; padding:.55rem .9rem; background:#fff; border:1px solid #ffffff; font-weight:700; box-shadow:0 8px 24px rgba(70,70,100,.08)}
+    .icon-bubble{width:64px;height:64px;border-radius:22px; display:grid; place-items:center; font-size:1.8rem; margin-bottom:14px; color:#36405a;}
+    .rose{background:var(--rose)} .mint{background:var(--mint)} .sky{background:var(--sky)} .lav{background:var(--lav)} .sun{background:var(--sun)}
+    .grid-3{display:grid; grid-template-columns:repeat(3,1fr); gap:20px}
+    .grid-2{display:grid; grid-template-columns:repeat(2,1fr); gap:22px}
+    .step{display:flex; gap:18px; align-items:flex-start; margin:14px 0;}
+    .step-num{min-width:42px;height:42px;border-radius:50%;display:grid;place-items:center;font-weight:900;background:var(--lav)}
+    .diagram{display:grid; grid-template-columns:repeat(5,1fr); gap:12px; align-items:center; margin-top:18px;}
+    .diagram .box{min-height:90px; border-radius:22px; padding:14px; text-align:center; background:#fff; box-shadow:0 10px 30px rgba(79,85,120,.11); display:flex; flex-direction:column; justify-content:center;}
+    .arrow{text-align:center; font-size:2rem; color:var(--accent)}
+    pre{background:#283044; color:#f6f7fb; border-radius:22px; padding:20px; font-size:.92rem; max-height:440px; overflow:auto; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08)}
+    code{font-family:Consolas, 'Courier New', monospace;}
+    .navbtn{border:none;border-radius:999px;padding:.75rem 1.2rem;font-weight:800;background:#fff;color:#384056;box-shadow:0 10px 28px rgba(70,70,100,.12)}
+    .navbtn:hover{transform:translateY(-1px); background:#f9fbff}
+    .navbtn.primary{background:linear-gradient(135deg,#8d7cf2,#5eb4a8); color:white}
+    .footer-nav{height:82px; display:flex; align-items:center; justify-content:center; gap:16px; background:rgba(255,255,255,.58); backdrop-filter:blur(12px)}
+    .mini{font-size:.96rem;color:#657083}
+    .tag{display:inline-block; padding:.3rem .65rem; border-radius:999px; font-size:.9rem; font-weight:700; background:#fff; margin:.18rem}
+    .clickable{cursor:pointer; transition:.18s ease} .clickable:hover{transform:translateY(-4px)}
+    .timeline{position:relative; padding-left:22px}.timeline::before{content:"";position:absolute;left:0;top:6px;bottom:6px;width:4px;border-radius:99px;background:linear-gradient(var(--accent),var(--accent2))}.timeline .item{margin-bottom:16px}
+    @media(max-width:900px){body{overflow:auto}.grid-3,.grid-2,.diagram{grid-template-columns:1fr}.arrow{transform:rotate(90deg)}.topbar{height:auto;gap:12px;flex-wrap:wrap;padding:14px}.slide{padding:24px 16px}.progress{width:100%}.footer-nav{position:sticky;bottom:0}.slide-inner{min-height:auto}.deck{height:auto;min-height:100vh}}
+  </style>
+</head>
+<body>
+<div class="deck">
+  <div class="topbar">
+    <div class="brand"><i class="fa-solid fa-microchip me-2"></i>Sistemas Operativos Integrado</div>
+    <div class="d-flex align-items-center gap-3 flex-wrap">
+      <span id="slideLabel" class="mini fw-bold"></span>
+      <div class="progress"><div id="bar" class="progress-bar" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <section class="slide active"><div class="slide-inner text-center animate__animated animate__fadeIn">
+    <div class="mb-4"><span class="pill"><i class="fa-solid fa-layer-group"></i> Procesos + Almacenamiento + I/O</span></div>
+    <h1>Cómo trabaja un Sistema Operativo “por dentro”</h1>
+    <p class="lead mt-3 mx-auto" style="max-width:860px">Una presentación interactiva para conectar hilos, planificación, sincronización, memoria, archivos, colas, temporizadores e interrupciones en un único flujo de ejecución.</p>
+    <div class="mt-4"><button class="navbtn primary" onclick="nextSlide()">Comenzar <i class="fa-solid fa-arrow-right ms-2"></i></button></div>
+  </div></section>
+
+  <section class="slide"><div class="slide-inner">
+    <h2><i class="fa-solid fa-map me-2"></i>Mapa general</h2>
+    <div class="grid-3 mt-3">
+      <div class="soft-card clickable" onclick="info('Procesos', 'Representan programas en ejecución. Pueden contener varios hilos que comparten recursos del proceso.')"><div class="icon-bubble rose"><i class="fa-solid fa-diagram-project"></i></div><h3>Procesos</h3><p>Hilos, planificación, estados, sincronización y comunicación.</p></div>
+      <div class="soft-card clickable" onclick="info('Almacenamiento', 'El SO administra memoria principal para ejecutar programas y memoria secundaria para persistir datos.')"><div class="icon-bubble sky"><i class="fa-solid fa-database"></i></div><h3>Almacenamiento</h3><p>RAM, memoria virtual, disco, bloques, buffers y sistemas de archivo.</p></div>
+      <div class="soft-card clickable" onclick="info('Gestión de I/O', 'Coordina dispositivos lentos e impredecibles mediante colas, drivers, interrupciones y temporizadores.')"><div class="icon-bubble mint"><i class="fa-solid fa-keyboard"></i></div><h3>Entrada/Salida</h3><p>Colas, temporizadores, interrupciones, drivers, DMA y llamadas al sistema.</p></div>
+    </div>
+  </div></section>
+
+  <section class="slide"><div class="slide-inner">
+    <h2><i class="fa-solid fa-gears me-2"></i>Procesos e hilos</h2>
+    <div class="grid-2">
+      <div class="soft-card"><h3>Proceso</h3><p>Es un programa en ejecución con su propio espacio de direcciones, recursos, archivos abiertos y estado.</p><span class="tag">PCB</span><span class="tag">memoria</span><span class="tag">recursos</span></div>
+      <div class="soft-card"><h3>Hilo</h3><p>Es una unidad de ejecución dentro de un proceso. Varios hilos comparten memoria, pero cada uno tiene su pila y contexto.</p><span class="tag">stack</span><span class="tag">PC</span><span class="tag">registros</span></div>
+    </div>
+    <div class="soft-card mt-4"><b>Idea clave:</b> el proceso es la “casa”; los hilos son las “personas” trabajando dentro de ella, compartiendo herramientas pero realizando tareas distintas.</div>
+  </div></section>
+
+  <section class="slide"><div class="slide-inner">
+    <h2><i class="fa-solid fa-calendar-days me-2"></i>Planificación del CPU</h2>
+    <div class="diagram">
+      <div class="box"><b>Nuevo</b><span class="mini">se crea</span></div><div class="arrow">→</div>
+      <div class="box"><b>Listo</b><span class="mini">espera CPU</span></div><div class="arrow">→</div>
+      <div class="box"><b>Ejecutando</b><span class="mini">usa CPU</span></div>
+    </div>
+    <div class="grid-3 mt-4">
+      <div class="soft-card"><h3>FCFS</h3><p>Primero en llegar, primero en ejecutarse. Simple, pero puede generar esperas largas.</p></div>
+      <div class="soft-card"><h3>Round Robin</h3><p>Cada proceso recibe un quantum. Ideal para sistemas interactivos.</p></div>
+      <div class="soft-card"><h3>Prioridades</h3><p>Ejecuta primero tareas más importantes. Requiere evitar inanición.</p></div>
+    </div>
+  </div></section>
+
+  <section class="slide"><div class="slide-inner">
+    <h2><i class="fa-solid fa-lock me-2"></i>Sincronización y comunicación</h2>
+    <div class="grid-2">
+      <div class="soft-card"><div class="icon-bubble lav"><i class="fa-solid fa-traffic-light"></i></div><h3>Sincronización</h3><p>Evita que varios hilos modifiquen datos compartidos al mismo tiempo de forma insegura.</p><p><b>Herramientas:</b> mutex, semáforos, monitores, variables de condición.</p></div>
+      <div class="soft-card"><div class="icon-bubble sun"><i class="fa-solid fa-comments"></i></div><h3>Comunicación</h3><p>Permite que procesos o hilos intercambien información.</p><p><b>Mecanismos:</b> memoria compartida, pipes, sockets, colas de mensajes.</p></div>
+    </div>
+    <button class="navbtn mt-4" onclick="showRace()"><i class="fa-solid fa-bug me-2"></i>Ver problema clásico</button>
+  </div></section>
+
+
+
+  <section class="slide"><div class="slide-inner">
+    <h2><i class="fa-solid fa-people-arrows me-2"></i>Concepto productor / consumidor</h2>
+    <p class="lead">Es un patrón clásico de sincronización donde unos hilos generan datos o tareas y otros hilos las procesan.</p>
+    <div class="grid-3 mt-3">
+      <div class="soft-card"><div class="icon-bubble rose"><i class="fa-solid fa-industry"></i></div><h3>Productor</h3><p>Genera elementos: comandos, solicitudes de I/O, eventos, paquetes o registros. Los coloca en una cola compartida.</p></div>
+      <div class="soft-card"><div class="icon-bubble sky"><i class="fa-solid fa-boxes-stacked"></i></div><h3>Buffer / cola</h3><p>Es memoria compartida en RAM. Actúa como “zona de espera” entre quien produce y quien consume.</p></div>
+      <div class="soft-card"><div class="icon-bubble mint"><i class="fa-solid fa-gears"></i></div><h3>Consumidor</h3><p>Toma elementos de la cola y los procesa: escribe en disco, imprime, envía por red o atiende un dispositivo.</p></div>
+    </div>
+    <div class="soft-card mt-4">
+      <h3><i class="fa-solid fa-triangle-exclamation me-2"></i>Problema que resuelve</h3>
+      <p>El productor puede ser más rápido que el consumidor, o el consumidor puede llegar antes de que existan datos. Por eso se necesita sincronización.</p>
+      <p><b>Herramientas típicas:</b> <code>mutex</code> para proteger la cola, <code>condition_variable</code> para dormir/despertar hilos, y una condición de finalización para cerrar correctamente.</p>
+    </div>
+    <button class="navbtn mt-3" onclick="info('Analogía', 'Una cocina: los cocineros producen platos y los mozos los consumen para llevarlos a las mesas. La barra de entrega funciona como cola compartida.')"><i class="fa-solid fa-lightbulb me-2"></i>Ver analogía</button>
+  </div></section>
+
+  <section class="slide"><div class="slide-inner">
+    <h2><i class="fa-solid fa-memory me-2"></i>Memoria principal</h2>
+    <div class="timeline soft-card">
+      <div class="item"><h3>RAM</h3><p>Espacio rápido donde se cargan instrucciones y datos que la CPU necesita ejecutar.</p></div>
+      <div class="item"><h3>Memoria virtual</h3><p>Da a cada proceso la ilusión de tener una memoria propia y grande, usando paginación.</p></div>
+      <div class="item"><h3>Page fault</h3><p>Ocurre cuando una página necesaria no está en RAM y debe traerse desde disco.</p></div>
+      <div class="item"><h3>Buffer / caché</h3><p>Áreas temporales que reducen accesos lentos a disco o dispositivos.</p></div>
+    </div>
+  </div></section>
+
+  <section class="slide"><div class="slide-inner">
+    <h2><i class="fa-solid fa-hard-drive me-2"></i>Memoria secundaria y sistemas de archivo</h2>
+    <div class="grid-3">
+      <div class="soft-card"><div class="icon-bubble sky"><i class="fa-solid fa-box-archive"></i></div><h3>Bloques</h3><p>El disco se organiza en bloques. El SO traduce archivos a bloques físicos.</p></div>
+      <div class="soft-card"><div class="icon-bubble mint"><i class="fa-solid fa-folder-tree"></i></div><h3>Directorios</h3><p>Permiten ubicar archivos por rutas, nombres y permisos.</p></div>
+      <div class="soft-card"><div class="icon-bubble rose"><i class="fa-solid fa-file-shield"></i></div><h3>Metadatos</h3><p>Tamaño, propietario, fechas, permisos y ubicación de bloques.</p></div>
+    </div>
+    <div class="soft-card mt-4"><b>En C++:</b> operaciones como <code>ifstream</code>, <code>ofstream</code> o <code>fstream</code> terminan pidiendo servicios al SO para leer/escribir archivos.</div>
+  </div></section>
+
+  <section class="slide"><div class="slide-inner">
+    <h2><i class="fa-solid fa-plug-circle-bolt me-2"></i>Gestión de I/O</h2>
+    <div class="grid-3">
+      <div class="soft-card clickable" onclick="info('Colas de I/O', 'Cuando muchos procesos piden leer o escribir, las solicitudes esperan en colas gestionadas por el SO o el driver.')"><div class="icon-bubble lav"><i class="fa-solid fa-list-ol"></i></div><h3>Colas</h3><p>Ordenan solicitudes pendientes de dispositivos.</p></div>
+      <div class="soft-card clickable" onclick="info('Temporizadores', 'El timer permite interrumpir procesos, controlar quantums y despertar tareas dormidas.')"><div class="icon-bubble sun"><i class="fa-solid fa-stopwatch"></i></div><h3>Temporizadores</h3><p>Controlan tiempos de espera, quantums y timeouts.</p></div>
+      <div class="soft-card clickable" onclick="info('Interrupciones', 'Una interrupción avisa a la CPU que un dispositivo terminó o necesita atención.')"><div class="icon-bubble mint"><i class="fa-solid fa-bell"></i></div><h3>Interrupciones</h3><p>Permiten reaccionar a eventos sin consultar constantemente.</p></div>
+    </div>
+  </div></section>
+
+  <section class="slide"><div class="slide-inner">
+    <h2><i class="fa-solid fa-film me-2"></i>Ejemplo integrador: reproductor que registra eventos</h2>
+    <p class="lead">Imaginemos una aplicación que reproduce audio, guarda un log y responde a comandos del usuario.</p>
+    <div class="diagram">
+      <div class="box"><i class="fa-solid fa-user"></i><b>Usuario</b><span class="mini">tecla/comando</span></div><div class="arrow">→</div>
+      <div class="box"><i class="fa-solid fa-keyboard"></i><b>I/O</b><span class="mini">interrupción</span></div><div class="arrow">→</div>
+      <div class="box"><i class="fa-solid fa-microchip"></i><b>Proceso</b><span class="mini">hilos</span></div>
+    </div>
+    <div class="diagram mt-3">
+      <div class="box"><i class="fa-solid fa-memory"></i><b>RAM</b><span class="mini">buffer</span></div><div class="arrow">↔</div>
+      <div class="box"><i class="fa-solid fa-hard-drive"></i><b>Archivo</b><span class="mini">log</span></div><div class="arrow">↔</div>
+      <div class="box"><i class="fa-solid fa-volume-high"></i><b>Dispositivo</b><span class="mini">salida</span></div>
+    </div>
+  </div></section>
+
+  <section class="slide"><div class="slide-inner">
+    <h2><i class="fa-solid fa-puzzle-piece me-2"></i>Participación de cada tema en el ejemplo</h2>
+    <div class="soft-card">
+      <div class="step"><div class="step-num">1</div><div><h3>Procesos e hilos</h3><p>Un hilo lee comandos, otro reproduce audio y otro guarda logs. El planificador alterna su ejecución.</p></div></div>
+      <div class="step"><div class="step-num">2</div><div><h3>Sincronización</h3><p>Los hilos comparten una cola de eventos. Un mutex evita que dos hilos la modifiquen simultáneamente.</p></div></div>
+      <div class="step"><div class="step-num">3</div><div><h3>Memoria</h3><p>Los comandos recientes y fragmentos de audio se mantienen en buffers de RAM.</p></div></div>
+      <div class="step"><div class="step-num">4</div><div><h3>Sistema de archivo</h3><p>El log se persiste en disco usando el sistema de archivos.</p></div></div>
+      <div class="step"><div class="step-num">5</div><div><h3>I/O</h3><p>La entrada del teclado, la salida de audio y la escritura en disco usan colas, interrupciones y temporizadores.</p></div></div>
+    </div>
+  </div></section>
+
+  <section class="slide"><div class="slide-inner">
+    <h2><i class="fa-solid fa-code me-2"></i>Mini simulación productor/consumidor en C++</h2>
+    <pre><code>// Idea base: productor-consumidor con hilos, cola, mutex y archivo.
+#include &lt;iostream&gt;
+#include &lt;fstream&gt;
+#include &lt;thread&gt;
+#include &lt;mutex&gt;
+#include &lt;condition_variable&gt;
+#include &lt;queue&gt;
+#include &lt;chrono&gt;
+using namespace std;
+
+queue&lt;string&gt; eventos;
+mutex mtx;
+condition_variable cv;
+bool finalizar = false;
+
+void productorEntrada() {
+    for (int i = 1; i &lt;= 5; i++) {
+        this_thread::sleep_for(chrono::milliseconds(700)); // temporizador
+        lock_guard&lt;mutex&gt; lock(mtx);
+        eventos.push("Comando recibido " + to_string(i)); // cola en RAM
+        cv.notify_one();
+    }
+    lock_guard&lt;mutex&gt; lock(mtx);
+    finalizar = true;
+    cv.notify_one();
+}
+
+void consumidorLog() {
+    ofstream log("eventos.log"); // sistema de archivo
+    while (true) {
+        unique_lock&lt;mutex&gt; lock(mtx);
+        cv.wait(lock, [] { return !eventos.empty() || finalizar; });
+        if (eventos.empty() &amp;&amp; finalizar) break;
+        string e = eventos.front(); eventos.pop();
+        lock.unlock();
+        log &lt;&lt; e &lt;&lt; endl; // I/O a disco
+        cout &lt;&lt; "Procesado: " &lt;&lt; e &lt;&lt; endl;
+    }
+}
+
+int main() {
+    thread t1(productorEntrada);
+    thread t2(consumidorLog);
+    t1.join();
+    t2.join();
+}</code></pre>
+  </div></section>
+
+  <section class="slide"><div class="slide-inner">
+    <h2><i class="fa-solid fa-flask me-2"></i>Ejercicio práctico integrador</h2>
+    <div class="soft-card">
+      <h3>Simulador de atención de solicitudes de I/O</h3>
+      <p>Implementar en C++ un programa que simule un sistema operativo atendiendo solicitudes de lectura/escritura realizadas por varios procesos.</p>
+      <div class="grid-2 mt-3">
+        <div><h3>Requisitos</h3><ul><li>Crear al menos 3 hilos productores, representando procesos.</li><li>Cada proceso genera solicitudes de I/O y las coloca en una cola compartida.</li><li>Un hilo consumidor representa el driver/dispositivo.</li><li>Usar mutex y condition_variable para sincronizar.</li><li>Guardar en un archivo log cada solicitud atendida.</li><li>Simular temporizadores con sleep_for.</li></ul></div>
+        <div><h3>Integración esperada</h3><ul><li><b>Procesos:</b> productores concurrentes.</li><li><b>Planificación:</b> observar intercalado de ejecución.</li><li><b>Memoria:</b> cola compartida en RAM.</li><li><b>Archivo:</b> persistencia en log.</li><li><b>I/O:</b> cola, espera, atención y finalización.</li></ul></div>
+      </div>
+    </div>
+  </div></section>
+
+  <section class="slide"><div class="slide-inner">
+    <h2><i class="fa-solid fa-list-check me-2"></i>Guía de resolución</h2>
+    <div class="timeline soft-card">
+      <div class="item"><h3>1. Definir la estructura SolicitudIO</h3><p>Debe tener idProceso, tipoOperacion, archivoDestino y tiempoEstimado.</p></div>
+      <div class="item"><h3>2. Crear la cola compartida</h3><p>Usar <code>queue&lt;SolicitudIO&gt;</code>, <code>mutex</code> y <code>condition_variable</code>.</p></div>
+      <div class="item"><h3>3. Programar productores</h3><p>Cada hilo genera solicitudes con pausas aleatorias.</p></div>
+      <div class="item"><h3>4. Programar consumidor</h3><p>Extrae solicitudes, simula el tiempo de I/O y escribe en el log.</p></div>
+      <div class="item"><h3>5. Verificar salida</h3><p>Comparar consola y archivo para explicar planificación, sincronización y almacenamiento.</p></div>
+    </div>
+  </div></section>
+
+  <section class="slide"><div class="slide-inner">
+    <h2><i class="fa-solid fa-clipboard-question me-2"></i>Preguntas para discutir</h2>
+    <div class="grid-2">
+      <div class="soft-card"><h3>Durante la ejecución</h3><p>¿Por qué el orden de atención puede cambiar entre ejecuciones?</p><p>¿Qué pasaría si quitamos el mutex?</p><p>¿Por qué el consumidor debe esperar y no consultar la cola en bucle infinito?</p></div>
+      <div class="soft-card"><h3>Sobre el SO real</h3><p>¿Qué parte se parece al driver?</p><p>¿Dónde aparecen las interrupciones?</p><p>¿Qué operaciones dependen del sistema de archivos?</p></div>
+    </div>
+    <button class="navbtn primary mt-4" onclick="startQuiz()"><i class="fa-solid fa-gamepad me-2"></i>Quiz rápido</button>
+  </div></section>
+
+  <section class="slide"><div class="slide-inner text-center">
+    <h2><i class="fa-solid fa-star me-2"></i>Cierre</h2>
+    <p class="lead mx-auto" style="max-width:850px">Un Sistema Operativo coordina ejecución, memoria, persistencia y dispositivos. Cuando un programa aparentemente simple lee, calcula y guarda datos, el SO ya está planificando hilos, administrando memoria, sincronizando recursos y gestionando I/O.</p>
+    <div class="mt-4"><span class="pill"><i class="fa-solid fa-check"></i> Procesos</span> <span class="pill"><i class="fa-solid fa-check"></i> Almacenamiento</span> <span class="pill"><i class="fa-solid fa-check"></i> I/O</span></div>
+    <div class="mt-4"><button class="navbtn primary" onclick="goHome()"><i class="fa-solid fa-house me-2"></i>Volver al inicio</button></div>
+  </div></section>
+
+  <div class="footer-nav">
+    <button class="navbtn" onclick="prevSlide()"><i class="fa-solid fa-arrow-left me-2"></i>Anterior</button>
+    <button class="navbtn primary" onclick="nextSlide()">Siguiente <i class="fa-solid fa-arrow-right ms-2"></i></button>
+  </div>
+</div>
+
+<script>
+  const slides = [...document.querySelectorAll('.slide')];
+  let current = 0;
+  function update(){
+    slides.forEach((s,i)=>{s.classList.toggle('active', i===current); if(i===current){s.querySelector('.slide-inner').classList.remove('animate__fadeIn'); void s.offsetWidth; s.querySelector('.slide-inner').classList.add('animate__animated','animate__fadeIn');}});
+    document.getElementById('slideLabel').textContent = `Diapositiva ${current+1} de ${slides.length}`;
+    document.getElementById('bar').style.width = `${((current+1)/slides.length)*100}%`;
+  }
+  function nextSlide(){ current = Math.min(current+1, slides.length-1); update(); }
+  function prevSlide(){ current = Math.max(current-1, 0); update(); }
+  function goHome(){ current = 0; update(); }
+  document.addEventListener('keydown', e=>{ if(e.key==='ArrowRight') nextSlide(); if(e.key==='ArrowLeft') prevSlide(); });
+  function info(title, text){ Swal.fire({title, text, icon:'info', confirmButtonText:'Entendido', confirmButtonColor:'#8d7cf2', background:'#fffafd'}); }
+  function showRace(){ Swal.fire({title:'Condición de carrera', html:'Ocurre cuando dos o más hilos acceden al mismo dato compartido y el resultado depende del orden exacto de ejecución.<br><br><b>Solución:</b> proteger la sección crítica con mutex, semáforos o monitores.', icon:'warning', confirmButtonText:'Claro', confirmButtonColor:'#8d7cf2'}); }
+  const quiz = [
+    {q:'¿Qué comparte un grupo de hilos dentro de un mismo proceso?', a:['La memoria del proceso','Siempre su pila individual','El mismo identificador de hilo'], ok:0},
+    {q:'¿Para qué sirve un mutex?', a:['Para persistir archivos','Para proteger una sección crítica','Para aumentar la RAM'], ok:1},
+    {q:'En productor/consumidor, ¿qué función cumple la cola compartida?', a:['Guardar tareas generadas hasta que sean procesadas','Reemplazar al planificador del CPU','Eliminar la necesidad de sincronización'], ok:0},
+    {q:'¿Qué representa una cola de I/O?', a:['Solicitudes pendientes a un dispositivo','Una carpeta del sistema','Un algoritmo de compresión'], ok:0},
+    {q:'¿Qué componente permite controlar quantums y esperas?', a:['Temporizador','Directorio','Compilador'], ok:0},
+    {q:'¿Qué mecanismo permite que un dispositivo avise que terminó?', a:['Interrupción','Variable local','Constructor'], ok:0}
+  ];
+  let qi=0, score=0;
+  function startQuiz(){ qi=0; score=0; ask(); }
+  function ask(){
+    const item=quiz[qi];
+    Swal.fire({title:`Pregunta ${qi+1}/${quiz.length}`, text:item.q, icon:'question', showCancelButton:true, showDenyButton:true, confirmButtonText:item.a[0], denyButtonText:item.a[1], cancelButtonText:item.a[2], confirmButtonColor:'#8d7cf2', denyButtonColor:'#5eb4a8', cancelButtonColor:'#f4a7b9'}).then(r=>{
+      let selected = r.isConfirmed?0:(r.isDenied?1:2);
+      if(selected===item.ok) score++;
+      qi++;
+      if(qi<quiz.length) ask(); else Swal.fire({title:'Resultado', html:`Obtuviste <b>${score}/${quiz.length}</b> respuestas correctas.`, icon: score>=4?'success':'info', confirmButtonColor:'#8d7cf2'});
+    });
+  }
+  update();
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
